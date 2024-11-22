@@ -2,6 +2,7 @@
 using ImpactElectronicInvoicing.Enumerators;
 using Newtonsoft.Json;
 using RestSharp;
+using SAPbobsCOM;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -64,7 +65,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
             int iRetVal = 0;
             try
             {
-                CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini");
+                CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini");
                 int updateMark = int.Parse(ini.IniReadValue("Default", "UPDATE_MARK").ToString());
                 string[] successArray = { "SUBMITTED", "CONFLICT", "CREATED" };
                 foreach (BoDocument oDocument in ListDocuments)
@@ -279,7 +280,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 string sEndPoint = "";
                 string sUser = "";
                 string sSubscription = "";
-                string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini";
+                string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini";
                 CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile(sFileLocation);
                 string xmlPath = ini.IniReadValue("Default", "XML_PATH");
                 string sProxy = ini.IniReadValue("Default", "PROXY_SERVER");
@@ -369,7 +370,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 string sEndPoint = "";
                 string sUser = "";
                 string sSubscription = "";
-                string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini";
+                string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini";
                 CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile(sFileLocation);
                 string xmlPath = ini.IniReadValue("Default", "XML_PATH");
                 string sProxy = ini.IniReadValue("Default", "PROXY_SERVER");
@@ -697,7 +698,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 string sSQL = "";
                 try
                 {
-                    string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini";
+                    string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini";
                     CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile(sFileLocation);
                     string sConnectionString = ini.IniReadValue("Default", "MSSQLConnectionString");
                     if (CompanyConnection.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
@@ -788,8 +789,8 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 int iSuccess = 12;
                 try
                 {
-                    int iTempHeader, iTempPayment, iTempIssuer, iTempCounterPart, iTempTaxesTotals, iTempDocumentSummary, iTempDetails, iTempDistrDetails, iTempAddDetails, iTempDestDetails, iTempOriginDetails, iTempB2G;
-                    iTempHeader = iTempPayment = iTempIssuer = iTempCounterPart = iTempTaxesTotals = iTempDocumentSummary = iTempDetails = iTempDistrDetails = iTempAddDetails = iTempDestDetails = iTempOriginDetails = iTempB2G = 0;
+                    int iTempHeader, iTempPayment, iTempIssuer, iTempCounterPart, iTempTaxesTotals, iTempDocumentSummary, iTempDetails, iTempDistrDetails, iTempAddDetails, iTempDestDetails, iTempOriginDetails, iTempB2G, iTempVatAnalysis;
+                    iTempHeader = iTempPayment = iTempIssuer = iTempCounterPart = iTempTaxesTotals = iTempDocumentSummary = iTempDetails = iTempDistrDetails = iTempAddDetails = iTempDestDetails = iTempOriginDetails = iTempB2G = iTempVatAnalysis = 0;
 
                     _oDocument.ImpactDocument = new ImpactDocument();
                     iTempHeader = this.GetInvoiceHeader(ref _oDocument);
@@ -820,7 +821,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     #endregion
 
 
-                    CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini");
+                    CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini");
                     string sJEPaymentMethods = ini.IniReadValue("Default", "PAYMENT_METHODS");
                     List<string> ListJEPaymentMethods = new List<string>();
                     ListJEPaymentMethods = sJEPaymentMethods.Split(',').ToList();
@@ -877,7 +878,9 @@ namespace ImpactElectronicInvoicing.BusinessLayer
 
                     _oDocument.ImpactDocument.summaries = this.GetInvoiceSummary(_oDocument, out iTempDocumentSummary);
 
-                    iResult = iTempHeader + iTempPayment + iTempIssuer + iTempCounterPart + iTempTaxesTotals + iTempDocumentSummary + iTempDetails + iTempAddDetails + iTempDistrDetails + iTempDestDetails + iTempOriginDetails + iTempB2G;
+                    iTempVatAnalysis = LoadVatAnalysis(_oDocument);
+
+                    iResult = iTempHeader + iTempPayment + iTempIssuer + iTempCounterPart + iTempTaxesTotals + iTempDocumentSummary + iTempDetails + iTempAddDetails + iTempDistrDetails + iTempDestDetails + iTempOriginDetails + iTempB2G + iTempVatAnalysis;
 
                     _oDocument.ImpactDocument.MiscellaneousData = null;
                     if (iResult == iSuccess)
@@ -931,6 +934,20 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         oRow.descriptions = new string[1];
                         oRow.descriptions[0] = oRS.Fields.Item("ItemName").Value.ToString();
                         oRow.quantity = int.Parse(oRS.Fields.Item("quantity").Value.ToString());
+                        string mUnit = oRS.Fields.Item("measurementUnit").Value.ToString();
+                        string mUnitCode = oRS.Fields.Item("measurementUnitCode").Value.ToString();
+                        if (!string.IsNullOrEmpty(mUnit) && !string.IsNullOrEmpty(mUnitCode) && !mUnit.Equals("-112") && !mUnitCode.Equals("-112"))
+                        {
+                            oRow.measurementUnit = mUnit;
+                            oRow.measurementUnitCode = int.Parse(mUnitCode);
+                            if (mUnitCode.Equals("7"))
+                            {
+                                oRow.otherMeasurementUnitTitle = oRS.Fields.Item("measurementUnit").Value.ToString();
+                                oRow.otherMeasurementUnitQuantity = decimal.Parse(oRS.Fields.Item("quantity").Value.ToString());
+                            }
+
+                        }
+
                         #region test b2g
                         //oRow.UnitPrice = Math.Round((decimal.Parse(oRS.Fields.Item("UnitPrice").Value.ToString())), 2);
                         if (_oDocument.B2G.Equals("Y"))
@@ -975,15 +992,26 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                             oRow.isHidden = false;
                         }
 
-                        oRow.incomeClassification = new Incomeclassification();
+                        CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicingDA\\ConfParams.ini");
+                        string sNoClassRecType = ini.IniReadValue("Default", "NO_CLASSIFICATION_RECTYPE");
+                        List<string> ListNoClassRecType = new List<string>();
+                        ListNoClassRecType = sNoClassRecType.Split(',').ToList();
 
-                        oRow.incomeClassification.classificationCategoryCode = oRS.Fields.Item("classificationCategory").Value.ToString();
-                        string classificationType = oRS.Fields.Item("classificationType").Value.ToString();
-                        if (!string.IsNullOrEmpty(classificationType) && !classificationType.Equals("-112"))
+                        string sNoClassDelivery = ini.IniReadValue("Default", "NO_CLASSIFICATION_DELIVERY");
+                        List<string> ListNoClassDelivery = new List<string>();
+                        ListNoClassDelivery = sNoClassDelivery.Split(',').ToList();
+
+                        if (ListNoClassRecType.Contains(invoiceType) == false && ListNoClassDelivery.Contains(invoiceType) == false)
                         {
-                            oRow.incomeClassification.classificationTypeCode = classificationType;
-                        }
+                            oRow.incomeClassification = new Incomeclassification();
 
+                            oRow.incomeClassification.classificationCategoryCode = oRS.Fields.Item("classificationCategory").Value.ToString();
+                            string classificationType = oRS.Fields.Item("classificationType").Value.ToString();
+                            if (!string.IsNullOrEmpty(classificationType) && !classificationType.Equals("-112"))
+                            {
+                                oRow.incomeClassification.classificationTypeCode = classificationType;
+                            }
+                        }
                         if (_oDocument.B2G.Equals("Y"))
                         {
                             oRow.CpvCode = _oDocument.CpvCode;
@@ -1246,13 +1274,71 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     #endregion
 
                     #region vatanalysis
+                    //if (this.CompanyConnection.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
+                    //{
+                    //    sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS WHERE \"ObjType\"=" + _oDocument.ObjType + " and \"DocEntry\"=" + _oDocument.DocEntry;
+                    //}
+                    //else
+                    //{
+                    //    sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS WHERE ObjType=" + _oDocument.ObjType + " and DocEntry=" + _oDocument.DocEntry;
+                    //}
+
+                    //SAPbobsCOM.Recordset oRSVat = CommonLibrary.Functions.Database.GetRecordSet(sSQL, this.CompanyConnection);
+
+
+                    ////TODO να διαβάζω πρώτα λίστ και να τα μεταφέρω μετά σε πίνακα για να μην μου μείνει πίνακας με άδειες θέσεις
+                    //List<VatAnalysis> VatAnalysisList = new List<VatAnalysis>();
+                    //while (oRSVat.EoF == false)
+                    //{
+                    //    VatAnalysis obj = new VatAnalysis();
+                    //    obj.Percentage = Math.Round(decimal.Parse(oRSVat.Fields.Item("Percentage").Value.ToString()), 2);
+                    //    obj.VatAmount = Math.Round(decimal.Parse(oRSVat.Fields.Item("VatAmount").Value.ToString()), 2);
+                    //    obj.UnderlyingValue = Math.Round(decimal.Parse(oRSVat.Fields.Item("UnderlyingValue").Value.ToString()), 2);
+                    //    VatAnalysisList.Add(obj);
+                    //    oRSVat.MoveNext();
+                    //}
+
+                    //_oDocument.ImpactDocument.vatAnalysis = new VatAnalysis[VatAnalysisList.Count];
+                    //int i = 0;
+                    //foreach (VatAnalysis obj in VatAnalysisList)
+                    //{
+                    //    _oDocument.ImpactDocument.vatAnalysis[i] = new VatAnalysis();
+                    //    _oDocument.ImpactDocument.vatAnalysis[i].Percentage = obj.Percentage;
+                    //    _oDocument.ImpactDocument.vatAnalysis[i].VatAmount = obj.VatAmount;
+                    //    _oDocument.ImpactDocument.vatAnalysis[i].UnderlyingValue = obj.UnderlyingValue;
+                    //    i++;
+                    //}
+                    //iResult++;
+                    #endregion
+                    if (iResult == 2)
+                    {
+                        iRetVal++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var a = new Logging("myDataMethods.LoadnCreateClass.GetIssuer", ex);
+                }
+                return iRetVal;
+            }
+
+
+            private int LoadVatAnalysis(BoDocument _oDocument)
+            {
+                int iResult = 0;
+                int iRetVal = 0;
+                string sSQL = "";
+                try
+                {
+
+                    #region vatanalysis
                     if (this.CompanyConnection.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
                     {
-                        sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS WHERE \"ObjType\"=" + _oDocument.ObjType + " and \"DocEntry\"=" + _oDocument.DocEntry;
+                        sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS_IMPACT WHERE \"ObjType\"=" + _oDocument.ObjType + " and \"DocEntry\"=" + _oDocument.DocEntry;
                     }
                     else
                     {
-                        sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS WHERE ObjType=" + _oDocument.ObjType + " and DocEntry=" + _oDocument.DocEntry;
+                        sSQL = "SELECT * FROM TKA_V_ELECTRONIC_INVOICES_B2G_VATANALYSIS_IMPACT WHERE ObjType=" + _oDocument.ObjType + " and DocEntry=" + _oDocument.DocEntry;
                     }
 
                     SAPbobsCOM.Recordset oRSVat = CommonLibrary.Functions.Database.GetRecordSet(sSQL, this.CompanyConnection);
@@ -1263,7 +1349,17 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     while (oRSVat.EoF == false)
                     {
                         VatAnalysis obj = new VatAnalysis();
-                        obj.Percentage = Math.Round(decimal.Parse(oRSVat.Fields.Item("Percentage").Value.ToString()), 2);
+                        string vatCat = GetVatCategory(oRSVat.Fields.Item("vatCategory").Value.ToString());
+                        if (vatCat.Equals("-"))
+                        {
+                            obj.Name = vatCat;
+                            obj.Percentage = 0;
+                        }
+                        else
+                        {
+                            obj.Name = vatCat + ".00";
+                            obj.Percentage = Math.Round(decimal.Parse(vatCat), 2);
+                        }
                         obj.VatAmount = Math.Round(decimal.Parse(oRSVat.Fields.Item("VatAmount").Value.ToString()), 2);
                         obj.UnderlyingValue = Math.Round(decimal.Parse(oRSVat.Fields.Item("UnderlyingValue").Value.ToString()), 2);
                         VatAnalysisList.Add(obj);
@@ -1275,6 +1371,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     foreach (VatAnalysis obj in VatAnalysisList)
                     {
                         _oDocument.ImpactDocument.vatAnalysis[i] = new VatAnalysis();
+                        _oDocument.ImpactDocument.vatAnalysis[i].Name = obj.Name;
                         _oDocument.ImpactDocument.vatAnalysis[i].Percentage = obj.Percentage;
                         _oDocument.ImpactDocument.vatAnalysis[i].VatAmount = obj.VatAmount;
                         _oDocument.ImpactDocument.vatAnalysis[i].UnderlyingValue = obj.UnderlyingValue;
@@ -1282,17 +1379,51 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     }
                     iResult++;
                     #endregion
-                    if (iResult == 3)
+                    if (iResult == 1)
                     {
                         iRetVal++;
                     }
                 }
                 catch (Exception ex)
                 {
-                    var a = new Logging("myDataMethods.LoadnCreateClass.GetIssuer", ex);
+                    var a = new Logging("myDataMethods.LoadnCreateClass.LoadVatAnalysis", ex);
                 }
                 return iRetVal;
             }
+
+            private string GetVatCategory(string vatCat)
+            {
+                string retVal = "";
+                switch (vatCat)
+                {
+                    case "1":
+                        retVal = "24";
+                        break;
+                    case "2":
+                        retVal = "13";
+                        break;
+                    case "3":
+                        retVal = "6";
+                        break;
+                    case "4":
+                        retVal = "17";
+                        break;
+                    case "5":
+                        retVal = "9";
+                        break;
+                    case "6":
+                        retVal = "4";
+                        break;
+                    case "7":
+                        retVal = "0";
+                        break;
+                    case "8":
+                        retVal = "-";
+                        break;
+                }
+                return retVal;
+            }
+
 
             /// <summary>
             /// Δημιουργία Αντικειμένου για την Εταιρεία που ανεβάζει
@@ -1360,6 +1491,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     oRet.Address.Postal = oRS.Fields.Item("Postal").Value.ToString();
                     oRet.Address.CountryCode = oRS.Fields.Item("CountryCode").Value.ToString();
                     oRet.Address.Country = oRS.Fields.Item("Country").Value.ToString();
+                    oRet.Address.Number = oRS.Fields.Item("StreetNo").Value.ToString();
 
                     _iResult++;
                 }
@@ -1388,6 +1520,19 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     oRet.InternalDocumentId = _oDocument.mKey;
                     oRet.RelativeDocuments = null;
                     oRet.dispatchDate = _oDocument.dispatchDate;
+                    oRet.billOfLading = _oDocument.billOfLading;
+                    oRet.shippingMethod = _oDocument.shippingMethod;
+                    oRet.vehileNumber = _oDocument.vehileNumber;
+                    oRet.totalQuantity = _oDocument.totalQuantity;
+
+                    string relativeDocumentsStr = _oDocument.RelativeDocuments;
+                    List<string> relativeDocuments = new List<string>();
+                    if (!string.IsNullOrEmpty(relativeDocumentsStr))
+                    {
+                        relativeDocuments = relativeDocumentsStr.Split(';').ToList();
+                        oRet.RelativeDocuments = new string[relativeDocuments.Count()];
+                        oRet.RelativeDocuments = relativeDocuments.ToArray();
+                    }
 
                     _iResult++;
                 }
@@ -1436,9 +1581,14 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 {
                     oRet = new Deliverydestinationdetails();
                     oRet.remarks = _oDocument.DestinationRemarks;
-                    oRet.Address = new Address3();
-                    oRet.Address.City = _oDocument.DestinationCity;
-                    oRet.Address.Street = _oDocument.DestinationStreet;
+                    oRet.Address = new Address();
+                    oRet.Address.City = _oDocument.deliveryCity;
+                    oRet.Address.Street = _oDocument.deliveryStreet;
+                    oRet.Address.Country = _oDocument.deliveryCountryCode;
+                    oRet.Address.CountryCode = _oDocument.deliveryCountryCode;
+                    oRet.Address.Number = _oDocument.deliveryNumber;
+                    oRet.Address.Postal = _oDocument.deliveryPostal;
+
 
                     _iResult++;
                 }
@@ -1462,13 +1612,19 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 try
                 {
                     oRet = new Deliveryorigindetails();
-                    oRet.movePurposeCode = "ΠΩΛΗΣΗ";
-                    oRet.Address = new Address2();
-                    oRet.Address.City = "testCity";
-                    oRet.Address.Street = "testStreet";
+                    oRet.movePurposeCode = _oDocument.movePurposeCode;
+                    oRet.movePurpose = _oDocument.movePurpose;
+
+                    oRet.Address = new Address();
+                    oRet.Address.City = _oDocument.originCity;
+                    oRet.Address.Street = _oDocument.originStreet;
+                    oRet.Address.Postal = _oDocument.originPostal;
+                    oRet.Address.Number = _oDocument.originNumber;
+                    oRet.Address.Country = _oDocument.originCountryCode;
+                    oRet.Address.CountryCode = _oDocument.originCountryCode;
+
                     oRet.Phones = new string[1];
                     oRet.Phones[0] = "2310521010";
-
                     _iResult++;
                 }
                 catch (Exception ex)
@@ -1521,17 +1677,19 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         ListFaxes = _oDocument.CounterPart_faxes.Split(';').ToList();
                         oRet.faxes = ListFaxes.ToArray();
                     }
-                    oRet.address = new Address1();
+                    oRet.address = new Address();
                     oRet.address.Street = _oDocument.CounterPart_address_street;
-                    oRet.address.city = _oDocument.CounterPart_address_city;
-                    oRet.address.postal = _oDocument.CounterPart_address_postalCode;
-                    oRet.address.countryCode = _oDocument.CounterPart_country;
+                    oRet.address.City = _oDocument.CounterPart_address_city;
+                    oRet.address.Postal = _oDocument.CounterPart_address_postalCode;
+                    oRet.address.CountryCode = _oDocument.CounterPart_country;
+                    oRet.address.Country = _oDocument.CounterPart_country;
+                    oRet.address.Number = _oDocument.CounterPart_number;
 
                     #region old code where i needed to filter the results
                     //switch (_oDocument.CounterPart_Define_Area)
                     //{
                     //    case "GR":
-                    //        CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini");
+                    //        CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile("C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini");
 
                     //        string sNoAddress = ini.IniReadValue("Default", "GR_COUNTERPART_WITHOUT_ADDRESS");
                     //        List<string> ListNoAddress = new List<string>();
@@ -1622,6 +1780,8 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                     oRet.previousBalance = Math.Round(decimal.Parse(oRS.Fields.Item("previousBalance").Value.ToString()), 2);
                     oRet.newBalance = Math.Round(decimal.Parse(oRS.Fields.Item("newBalance").Value.ToString()), 2);
                     oRet.electronicPaymentCode = oRS.Fields.Item("electronicPaymentCode").Value.ToString();
+                    oRet.otherPaymentDetails = oRS.Fields.Item("otherPaymentDetails").Value.ToString();
+                    oRet.paymentReferenceID = oRS.Fields.Item("paymentReferenceID").Value.ToString();
 
                     while (oRS.EoF == false)
                     {
@@ -1631,6 +1791,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         oPayment.remarks = oRS.Fields.Item("remarks").Value.ToString();
                         oPayment.paymentDate = oRS.Fields.Item("paymentDate").Value.ToString();
                         oPayment.paymentMethodTypeCode = int.Parse(oRS.Fields.Item("paymentMethodTypeCode").Value.ToString());
+
                         paymentMethods.Add(oPayment);
 
                         oRS.MoveNext();
@@ -1661,7 +1822,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                 {
                     DateTime dtRefDate = DateTime.Now;
 
-                    string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing\\ConfParams.ini";
+                    string sFileLocation = "C:\\Program Files\\sap\\ImpactElectronicInvoicing_DA\\ConfParams.ini";
                     CommonLibrary.Ini.IniFile ini = new CommonLibrary.Ini.IniFile(sFileLocation);
 
                     //ΠΡΕΠΕΙ ΝΑ ΣΚΕΦΤΩ ΚΑΤΙ ΔΗΜΙΟΥΡΓΙΚΟ ΓΙΑ ΝΑ ΣΥΝΔΕΟΜΑΙ ΣΕ ΔΙΑΦΟΡΕΤΙΚΗ ΒΑΣΗ ΑΝΑΛΟΓΑ ΜΕ ΤΟ DBNAME (HANA EDITION)
@@ -1687,6 +1848,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         _oDocument.CounterPart_address_street = oRS.Fields.Item("CounterPart_address_street").Value.ToString();
                         _oDocument.CounterPart_branch = oRS.Fields.Item("CounterPart_branch").Value.ToString();
                         _oDocument.CounterPart_country = oRS.Fields.Item("CounterPart_country").Value.ToString();
+                        _oDocument.CounterPart_number = oRS.Fields.Item("CounterPart_number").Value.ToString();
                         _oDocument.CounterPart_name = oRS.Fields.Item("CounterPart_name").Value.ToString();
                         _oDocument.CounterPart_code = oRS.Fields.Item("CounterPart_code").Value.ToString();
                         _oDocument.CounterPart_taxOffice = oRS.Fields.Item("CounterPart_taxOffice").Value.ToString();
@@ -1695,10 +1857,8 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         _oDocument.CounterPart_activities = oRS.Fields.Item("CounterPart_activities").Value.ToString();
                         _oDocument.CounterPart_phones = oRS.Fields.Item("CounterPart_phones").Value.ToString();
                         _oDocument.CounterPart_LicTradNum = oRS.Fields.Item("LicTradNum").Value.ToString();
-
                         _oDocument.CounterPart_faxes = oRS.Fields.Item("CounterPart_faxes").Value.ToString();
-                        _oDocument.DestinationCity = oRS.Fields.Item("DestinationCity").Value.ToString();
-                        _oDocument.DestinationStreet = oRS.Fields.Item("DestinationStreet").Value.ToString();
+                        _oDocument.deliveryCity = oRS.Fields.Item("deliveryCity").Value.ToString();
                         _oDocument.DestinationRemarks = oRS.Fields.Item("DestinationRemarks").Value.ToString();
 
 
@@ -1712,9 +1872,46 @@ namespace ImpactElectronicInvoicing.BusinessLayer
                         string invoiceType = oRS.Fields.Item("invoiceType").Value.ToString();
                         _oDocument.ImpactDocument.invoiceTypeCode = invoiceType;
                         _oDocument.dispatchDate = DateTime.Parse(oRS.Fields.Item("dispatchDate").Value.ToString());
+                        _oDocument.ImpactDocument.currencyCode = oRS.Fields.Item("currency").Value.ToString();
+
+                        string dDate = oRS.Fields.Item("dispatchDate").Value.ToString();
+                        if (!string.IsNullOrEmpty(dDate) && !dDate.Equals("-112"))
+                        {
+                            _oDocument.dispatchDate = DateTime.Parse(oRS.Fields.Item("dispatchDate").Value.ToString());
+                        }
+                        string isDeliveryNote = oRS.Fields.Item("isDeliveryNote").Value.ToString();
+                        if (isDeliveryNote.Equals("true"))
+                        {
+                            _oDocument.ImpactDocument.isDeliveryNote = true;
+                        }
+                        else
+                        {
+                            _oDocument.ImpactDocument.isDeliveryNote = false;
+                        }
                         #endregion
 
+
+                        #region Distribution Details
                         _oDocument.ImpactDocument.currencyCode = oRS.Fields.Item("currency").Value.ToString();
+                        _oDocument.movePurpose = oRS.Fields.Item("movePurpose").Value.ToString();
+                        _oDocument.movePurposeCode = int.Parse(oRS.Fields.Item("movePurposeCode").Value.ToString());
+                        _oDocument.shippingMethod = oRS.Fields.Item("shippingMethod").Value.ToString();
+                        _oDocument.vehileNumber = oRS.Fields.Item("vehileNumber").Value.ToString();
+                        _oDocument.billOfLading = oRS.Fields.Item("billOfLading").Value.ToString();
+                        _oDocument.totalQuantity = double.Parse(oRS.Fields.Item("totalQuantity").Value.ToString());
+                        _oDocument.deliveryCountryCode = oRS.Fields.Item("deliveryCountryCode").Value.ToString();
+                        _oDocument.deliveryCity = oRS.Fields.Item("deliveryCity").Value.ToString();
+                        _oDocument.deliveryStreet = oRS.Fields.Item("deliveryStreet").Value.ToString();
+                        _oDocument.deliveryPostal = oRS.Fields.Item("deliveryPostal").Value.ToString();
+                        _oDocument.deliveryNumber = oRS.Fields.Item("deliveryNumber").Value.ToString();
+                        _oDocument.originCountryCode = oRS.Fields.Item("originCountryCode").Value.ToString();
+                        _oDocument.originCity = oRS.Fields.Item("originCity").Value.ToString();
+                        _oDocument.originStreet = oRS.Fields.Item("originStreet").Value.ToString();
+                        _oDocument.originPostal = oRS.Fields.Item("originPostal").Value.ToString();
+                        _oDocument.originNumber = oRS.Fields.Item("originNumber").Value.ToString();
+
+                        #endregion
+
                         if (_oDocument.ImpactDocument.dateIssued == DateTime.Today)
                         {
                             _oDocument.ImpactDocument.isDelayedCode = 0;
@@ -1748,99 +1945,47 @@ namespace ImpactElectronicInvoicing.BusinessLayer
 
                         }
                         _oDocument.ImpactDocument.specialInvoiceCategory = int.Parse(oRS.Fields.Item("specialInvoiceCategory").Value.ToString());
-                        #region NotRequired
 
 
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("currency").Value.ToString()) || oRS.Fields.Item("currency").Value.ToString().Equals("-112"))
-                        //{
-                        //    //oRet.currencySpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    CurrencyType enCur = (CurrencyType)Enum.Parse(typeof(CurrencyType), oRS.Fields.Item("currency").Value.ToString());
-                        //    oRet.currencySpecified = true;
-                        //    oRet.currency = enCur;
-                        //}
 
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("vatPaymentSuspension").Value.ToString()) || oRS.Fields.Item("vatPaymentSuspension").Value.ToString().Equals("-112"))
-                        //{
-                        //    oRet.vatPaymentSuspensionSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.vatPaymentSuspensionSpecified = true;
-                        //    oRet.vatPaymentSuspension = oRS.Fields.Item("vatPaymentSuspension").Value.ToString();
-                        //}
+                        #region Branch
+                        _oDocument.ImpactDocument.branchCode = oRS.Fields.Item("branchCode").Value.ToString();
+                        _oDocument.ImpactDocument.branchId = oRS.Fields.Item("branchId").Value.ToString();
+                        _oDocument.ImpactDocument.branchAddress = new branchAddress();
+                        _oDocument.ImpactDocument.branchAddress.city = oRS.Fields.Item("branchCity").Value.ToString();
+                        _oDocument.ImpactDocument.branchAddress.street = oRS.Fields.Item("branchStreet").Value.ToString();
+                        _oDocument.ImpactDocument.branchAddress.postal = oRS.Fields.Item("branchPostal").Value.ToString();
+                        _oDocument.ImpactDocument.branchAddress.countryCode = oRS.Fields.Item("branchCountryCode").Value.ToString();
 
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("exchangeRate").Value.ToString()) || decimal.Parse(oRS.Fields.Item("exchangeRate").Value.ToString()) == -775)
-                        //{
-                        //    oRet.exchangeRateSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.exchangeRateSpecified = true;
-                        //    //oRet.exchangeRate = decimal.Parse(dtRow["exchangeRate"].ToString());
-                        //    oRet.exchangeRate = Math.Round((decimal.Parse(oRS.Fields.Item("exchangeRate").Value.ToString())), 2);
-                        //}
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("selfPricing").Value.ToString()) || oRS.Fields.Item("selfPricing").Value.ToString().Equals("-112"))
-                        //{
-                        //    oRet.selfPricingSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.selfPricingSpecified = true;
-                        //    oRet.selfPricing = oRS.Fields.Item("selfPricing").Value.ToString() == "0" ? false : true;
-                        //}
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("dispatchDate").Value.ToString()) || oRS.Fields.Item("dispatchDate").Value.ToString().Equals("-112"))
-                        //{
-                        //    oRet.dispatchDateSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.dispatchDateSpecified = true;
-                        //    oRet.dispatchDate = DateTime.Parse(oRS.Fields.Item("dispatchDate").Value.ToString());
-                        //}
-                        //if (string.IsNullOrEmpty(oRS.Fields.Item("dispatchTime").Value.ToString()) || oRS.Fields.Item("dispatchTime").Value.ToString().Equals("-112"))
-                        //{
-                        //    oRet.dispatchTimeSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.dispatchTimeSpecified = true;
-                        //    oRet.dispatchTime = DateTime.Parse(oRS.Fields.Item("dispatchTime").Value.ToString());
-                        //}
-                        //if (!string.IsNullOrEmpty(oRS.Fields.Item("vehicleNumber").Value.ToString()) || oRS.Fields.Item("vehicleNumber").Value.ToString().Equals("-112"))
-                        //{
-                        //    oRet.vehicleNumber = oRS.Fields.Item("vehicleNumber").Value.ToString();
-                        //}
+                        _oDocument.RelativeDocuments = oRS.Fields.Item("relativeDocuments").Value.ToString();
 
-                        //string sNoMovePurpose = ini.IniReadValue("Default", "NO_MOVE_PURPOSE");
-                        //List<string> ListNoMovePurpose = new List<string>();
-                        //ListNoMovePurpose = sNoMovePurpose.Split(',').ToList();
-
-                        ////if (ListNoMovePurpose.Contains(_oInvoiceType.ToString()) == false)
-                        ////{
-                        //if (ListNoMovePurpose.Contains(oRet.invoiceType.ToString()) == true || string.IsNullOrEmpty(oRS.Fields.Item("movePurpose").Value.ToString()) || int.Parse(oRS.Fields.Item("movePurpose").Value.ToString()) == -112)
-                        //{
-                        //    oRet.movePurposeSpecified = false;
-                        //}
-                        //else
-                        //{
-                        //    oRet.movePurposeSpecified = true;
-                        //    oRet.movePurpose = int.Parse(oRS.Fields.Item("movePurpose").Value.ToString());
-                        //}
-
-                        //if (!string.IsNullOrEmpty(oRS.Fields.Item("invoiceVariationType").Value.ToString()) && int.Parse(oRS.Fields.Item("invoiceVariationType").Value.ToString()) != -112)
-                        //{
-                        //    oRet.invoiceVariationType = int.Parse(oRS.Fields.Item("invoiceVariationType").Value.ToString());
-                        //    oRet.invoiceVariationTypeSpecified = true;
-                        //}
-                        //else
-                        //{
-                        //    oRet.invoiceVariationTypeSpecified = false;
-                        //}
-                        //}
+                        string branchPhonesStr = oRS.Fields.Item("branchPhones").Value.ToString();
+                        List<string> branchPhones = new List<string>();
+                        if (!string.IsNullOrEmpty(branchPhonesStr))
+                        {
+                            branchPhones = branchPhonesStr.Split(';').ToList();
+                            _oDocument.ImpactDocument.branchPhones = new string[branchPhones.Count()];
+                            _oDocument.ImpactDocument.branchPhones = branchPhones.ToArray();
+                        }
+                        string branchFaxesStr = oRS.Fields.Item("branchFaxes").Value.ToString();
+                        List<string> branchFaxes = new List<string>();
+                        if (!string.IsNullOrEmpty(branchFaxesStr))
+                        {
+                            branchFaxes = branchFaxesStr.Split(';').ToList();
+                            _oDocument.ImpactDocument.branchFaxes = new string[branchFaxes.Count()];
+                            _oDocument.ImpactDocument.branchFaxes = branchFaxes.ToArray();
+                        }
                         #endregion
+
+                        #region MiscellaneousData
+                        _oDocument.ImpactDocument.MiscellaneousData = new Miscellaneousdata();
+                        _oDocument.ImpactDocument.MiscellaneousData.MoreInformation1 = oRS.Fields.Item("MoreInformation1").Value.ToString();
+                        _oDocument.ImpactDocument.MiscellaneousData.MoreInformation2 = oRS.Fields.Item("MoreInformation2").Value.ToString();
+                        _oDocument.ImpactDocument.MiscellaneousData.MoreInformation3 = oRS.Fields.Item("MoreInformation3").Value.ToString();
+
+                        #endregion
+
+
                         //TODO
                         //List<long> correlatedInvoicesField;
                         oRS.MoveNext();

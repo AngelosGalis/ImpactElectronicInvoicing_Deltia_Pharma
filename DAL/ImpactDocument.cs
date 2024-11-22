@@ -9,9 +9,14 @@ public class ImpactDocument
     public string documentTypeCode { get; set; }
     public string series { get; set; }
     public string number { get; set; }
+    public bool isDeliveryNote { get; set; }
     public DateTime dateIssued { get; set; }
     public string orderNumber { get; set; }
     public string remarks { get; set; }
+    public string branchCode { get; set; }
+    public string branchId { get; set; }
+    public string[] branchPhones { get; set; }
+    public string[] branchFaxes { get; set; }
     public B2GDetails B2GDetails {get;set;}
     public Issuer Issuer { get; set; }
     public Recipient Recipient { get; set; }
@@ -27,6 +32,7 @@ public class ImpactDocument
     public Summaries summaries { get; set; }
     public VatAnalysis[] vatAnalysis { get; set; }
     public Miscellaneousdata MiscellaneousData { get; set; }
+    public branchAddress branchAddress { get; set; }
     public int isDelayedCode { get; set; }
 }
 
@@ -62,6 +68,8 @@ public class Address
     public string City { get; set; }
     public string Street { get; set; }
     public string Postal { get; set; }
+    public string Number { get; set; }
+
 }
 
 public class Counterparty
@@ -73,54 +81,46 @@ public class Counterparty
     public string[] Activities { get; set; }
     public string[] Phones { get; set; }
     public string[] faxes { get; set; }
-    public Address1 address { get; set; }
+    public Address address { get; set; }
 }
 
-public class Address1
-{
-    public string countryCode { get; set; }
-    public string city { get; set; }
-    public string Street { get; set; }
-    public string postal { get; set; }
-}
+
 
 public class Distributiondetails
 {
     public string InternalDocumentId { get; set; }
     public DateTime dispatchDate { get; set; }
+    public string shippingMethod { get; set; }
+    public string vehileNumber { get; set; }
+    public string billOfLading { get; set; }
+    public double totalQuantity { get; set; }
     public string[] RelativeDocuments { get; set; }
 }
 
 public class Deliveryorigindetails
 {
     public string movePurposeCode { get; set; }
-    public Address2 Address { get; set; }
+    public string movePurpose { get; set; }
+    public Address Address { get; set; }
     public string[] Phones { get; set; }
 }
 
-public class Address2
-{
-    public string City { get; set; }
-    public string Street { get; set; }
-}
+
 
 public class Deliverydestinationdetails
 {
-    public Address3 Address { get; set; }
+    public Address Address { get; set; }
     public string remarks { get; set; }
 }
 
-public class Address3
-{
-    public string City { get; set; }
-    public string Street { get; set; }
-}
 
 public class Paymentdetails
 {
     public decimal previousBalance { get; set; }
     public decimal newBalance { get; set; }
     public string electronicPaymentCode { get; set; }
+    public string otherPaymentDetails { get; set; }
+    public string paymentReferenceID { get; set; }
     public Paymentmethod[] paymentMethods { get; set; }
 }
 
@@ -154,6 +154,15 @@ public class Miscellaneousdata
     public string MoreInformation3 { get; set; }
 }
 
+public class branchAddress
+{
+    public string countryCode { get; set; }
+    public string city { get; set; }
+    public string street { get; set; }
+    public string postal { get; set; }
+
+}
+
 public class Detail
 {
     public int lineNo { get; set; }
@@ -175,6 +184,10 @@ public class Detail
     public bool isHidden { get; set; }
     public string CpvCode { get; set; }
     public string measurementUnitCodeEN { get; set; }
+    public string measurementUnit { get; set; }
+    public int measurementUnitCode { get; set; }
+    public string otherMeasurementUnitTitle { get; set; }
+    public decimal otherMeasurementUnitQuantity { get; set; }
     public Incomeclassification incomeClassification { get; set; }
 }
 
@@ -202,6 +215,7 @@ public class Τaxes
 
 public class VatAnalysis
 {
+    public string Name { get; set; }
     public decimal Percentage { get; set; }
     public decimal VatAmount { get; set; }
     public decimal UnderlyingValue { get; set; }

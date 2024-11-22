@@ -45,6 +45,7 @@ namespace ImpactElectronicInvoicing.BusinessLayer
         public string CounterPart_name { get; set; }
         public string CounterPart_vatNumber { get; set; }
         public string CounterPart_country { get; set; }
+        public string CounterPart_number { get; set; }
         public string CounterPart_branch { get; set; }
         public string CounterPart_address_city { get; set; }
         public string CounterPart_address_street { get; set; }
@@ -56,12 +57,27 @@ namespace ImpactElectronicInvoicing.BusinessLayer
         public string CounterPart_faxes { get; set; }
         public string CounterPart_activities { get; set; }
         public string CounterPart_LicTradNum { get; set; }
-        public string DestinationStreet { get; set; }
-        public string DestinationCity { get; set; }
+        public string deliveryCountryCode { get; set; }
+        public string deliveryCity { get; set; }
+        public string deliveryStreet { get; set; }
+        public string deliveryPostal { get; set; }
+        public string deliveryNumber { get; set; }
+        public string originCountryCode { get; set; }
+        public string originCity { get; set; }
+        public string originStreet { get; set; }
+        public string originPostal { get; set; }
+        public string originNumber { get; set; }
         public string DestinationRemarks { get; set; }
         public string B2G { get; set; }
         public string CpvCode { get; set; }
         public string measurementUnitCodeEN { get; set; }
+        public string movePurpose { get; set; }
+        public string movePurposeCode { get; set; }
+        public string shippingMethod { get; set; }
+        public string vehileNumber { get; set; }
+        public string billOfLading { get; set; }
+        public double totalQuantity { get; set; }
+        public string RelativeDocuments { get; set; }
 
         public DocumentPrepared DocumentStatus { get; set; }
         //public InvoicesDoc AADEDocument { get; set; }
